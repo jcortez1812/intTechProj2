@@ -14,7 +14,7 @@ lck = threading.Lock()
 def build():
     lst = [[] for _ in range(1000)] # * 1000
 
-    fd = open("PROJI-DNSTS.txt", "r")
+    fd = open("PROJ2-DNSTS1.txt", "r")
     temp = fd.readline()
     while temp != "":
         #print temp
@@ -50,7 +50,10 @@ def threadWork(c):
 
         msg = search(hostQ.decode('utf-8'))
 
-        c.send(msg.encode('utf-8'))
+        if " - Error:HOST NOT FOUND" in msg:
+            continue
+        else:
+            c.send(msg.encode('utf-8'))
     c.close()
 
 
@@ -97,7 +100,7 @@ def server():
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
-        print 'Specify port number: python ts.py tsListenPort'
+        print 'Specify port number: python ts1.py ts1ListenPort'
         exit()
 
 

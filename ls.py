@@ -9,6 +9,7 @@ import sys
 from sys import exit
 
 import socket
+import concurrent.futures
 
 lck = threading.Lock()
 
@@ -37,22 +38,28 @@ def firstCon(hostQ, c):
 
     cs.settimeout(5)
 
+    msg = ""
     try:
         msg = cs.recv(216)
     except socket.timeout as err:
         cs.close()
+        return 0
     except socket.error as err:
-        exit()
+        cs.close()
+        return 0
     
     if len(msg) != 0:
         c.send(msg)
+        cs.close()
+        return 1
 
     cs.close()
+    return 0
 
 
-def secdondCon(hostQ, c):
+def secondCon(hostQ, c):
     try:
-        cs = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #print("[C]: Client socket created")
     except socket.error as err:
         #print('socket open error: {} \n'.format(err))
@@ -64,26 +71,32 @@ def secdondCon(hostQ, c):
 
     # connect to the server on local machine
     server_binding = (rsServer, port)
-    cs.connect(server_binding)
+    ps.connect(server_binding)
 
     print("[S]: Host name: {}" .format(hostQ.decode('utf-8')))
 
-    cs.send(hostQ)
+    ps.send(hostQ)
 
-    cs.settimeout(5)
+    ps.settimeout(5)
 
+    msg = ""
     try:
-        msg = cs.recv(216)
+        msg = ps.recv(216)
     except socket.timeout as err:
-        cs.close()
+        ps.close()
+        return 0
     except socket.error as err:
-        exit()
+        ps.close()
+        return 0
     
     if len(msg) != 0:
         c.send(msg)
+        ps.close()
+        return 1
 
 
-    cs.close()
+    ps.close()
+    return 0
 
 
 
@@ -92,15 +105,31 @@ def threadWork(c):
         hostQ = c.recv(200)
         #print hostQ.decode('utf-8')
         if not hostQ:
-            lck.release()
+            #lck.release()
             break
 
         #print("[S]: Host name: {}" .format(hostQ.decode('utf-8')))
+        isMsg = 0
 
-        start_new_thread(firstCon, (hostQ, c, ))
-        start_new_thread(secondCon, (hostQ, c, ))
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(firstCon, hostQ, c)
+            retVal = future.result()
+            if retVal == 1:
+                isMsg = 1
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(secondCon, hostQ, c)
+            retVal = future.result()
+            if retVal == 1:
+                isMsg = 1
+        #start_new_thread(firstCon, (hostQ, c, ))
+        #start_new_thread(secondCon, (hostQ, c, ))
 
+        hostQ = hostQ.decode('utf-8')
 
+        if isMsg == 0:
+            msg = hostQ + " - Error:HOST NOT FOUND\n"
+            c.send(msg)
 
         #lck.release()
     c.close()
@@ -127,7 +156,7 @@ def server():
     while True:
         csockid, addr = ss.accept()
         #print ("[S]: Got a connection request from a client at {}".format(addr))
-        lck.acquire()
+        #lck.acquire()
 
         start_new_thread(threadWork, (csockid,))
     # send a intro message to the client.  

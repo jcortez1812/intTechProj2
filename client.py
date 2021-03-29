@@ -26,7 +26,7 @@ def clientRS():
 
     #msg = raw_input("Enter Query: ")  If we want the user to enter a query
 
-    hostnames_fd = open("PROJI-HNS.txt", "r")
+    hostnames_fd = open("PROJ2-HNS.txt", "r")
     hostnames = hostnames_fd.read().splitlines()
     print hostnames
     fd = open("RESOLVED.txt", "w")
@@ -38,29 +38,12 @@ def clientRS():
         # Receive data from the server
         rsResponse=cs.recv(216) # or 215 dont think it matters that much
         rsSplit = (rsResponse.decode('utf-8')).split()
-        if rsSplit[2] == "A":
-            #fd = open("RESOLVED.txt", "w")
-            fd.write(rsResponse)
-            #fd.write("\n")
-        else:
-            try:
-                tsC = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                #print("[C]: Client socket created")
-            except socket.error as err:
-                #print('socket open error: {} \n'.format(err))
-                exit()
-            tsPort = int(sys.argv[3])
-            tsServer = socket.gethostbyname(rsSplit[0])
-            tsBind = (tsServer, tsPort)
-            tsC.connect(tsBind)
-            tsC.send(msgToLower.encode('utf-8'))
-            tsResponse = tsC.recv(216)
-            #fd = open("RESOLVED.txt", "w")
-            tstr = tsResponse.decode('utf-8')
-            print tstr
 
-            fd.write(tstr)
-            #fd.write("\n")
+        print "recv string: " + rsResponse.decode('utf-8')
+
+        fd.write(rsResponse)
+
+      
         
 
     # print("[C]: Data received from server: {}".format(data_from_server.decode('utf-8')))
@@ -71,8 +54,8 @@ def clientRS():
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 4:
-        print 'Incorrect number of arguments: python ts.py rsHostname rsListenPort tsListenPort'
+    if len(sys.argv) != 3:
+        print 'Incorrect number of arguments: python client.py lsHostname lsListenPort'
         exit()
     
     t2 = threading.Thread(name='clientRS', target=clientRS)
