@@ -4,6 +4,7 @@ import random
 import readline
 from thread import *
 import threading
+import select
 
 import sys
 from sys import exit
@@ -34,30 +35,6 @@ def firstCon(hostQ, c):
 
     print("[S]: Host name: {}" .format(hostQ.decode('utf-8')))
 
-    cs.send(hostQ)
-
-    cs.settimeout(5)
-
-    msg = ""
-    try:
-        msg = cs.recv(216)
-    except socket.timeout as err:
-        cs.close()
-        return 0
-    except socket.error as err:
-        cs.close()
-        return 0
-    
-    if len(msg) != 0:
-        c.send(msg)
-        cs.close()
-        return 1
-
-    cs.close()
-    return 0
-
-
-def secondCon(hostQ, c):
     try:
         ps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #print("[C]: Client socket created")
@@ -76,25 +53,24 @@ def secondCon(hostQ, c):
     print("[S]: Host name: {}" .format(hostQ.decode('utf-8')))
 
     ps.send(hostQ)
+    cs.send(hostQ)
 
-    ps.settimeout(5)
-
+    ps.setblocking(0)
+    cs.setblocking(0)
     msg = ""
-    try:
-        msg = ps.recv(216)
-    except socket.timeout as err:
-        ps.close()
-        return 0
-    except socket.error as err:
-        ps.close()
-        return 0
-    
+    socks = [cs, ps]
+
+    ready_socks,_,_ = select.select(socks, [], [], 5)
+    for sock in ready_socks:
+        msg += sock.recv(216)
+
     if len(msg) != 0:
         c.send(msg)
+        cs.close()
         ps.close()
         return 1
 
-
+    cs.close()
     ps.close()
     return 0
 
@@ -116,14 +92,6 @@ def threadWork(c):
             retVal = future.result()
             if retVal == 1:
                 isMsg = 1
-        
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(secondCon, hostQ, c)
-            retVal = future.result()
-            if retVal == 1:
-                isMsg = 1
-        #start_new_thread(firstCon, (hostQ, c, ))
-        #start_new_thread(secondCon, (hostQ, c, ))
 
         hostQ = hostQ.decode('utf-8')
 
